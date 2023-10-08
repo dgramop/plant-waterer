@@ -4,7 +4,7 @@
 #![no_std]
 #![no_main]
 
-use bsp::entry;
+use bsp::{entry, hal::gpio::AnyPin};
 use defmt::*;
 use defmt_rtt as _;
 use embedded_hal::digital::v2::OutputPin;
@@ -59,15 +59,84 @@ fn main() -> ! {
     // a Pico W and want to toggle a LED with a simple GPIO output pin, you can connect an external
     // LED to one of the GPIO pins, and reference that pin here.
     let mut led_pin = pins.led.into_push_pull_output();
+    let mut pump_pin = pins.gpio18.into_push_pull_output();
+
+    let mut stepper = (pins.gpio2.into_push_pull_output(), pins.gpio3.into_push_pull_output(), pins.gpio4.into_push_pull_output(), pins.gpio5.into_push_pull_output());
+
+    let mut steps = 0;
+
+    let steps_per_water = 1000;
 
     loop {
+        match steps % 4 {
+            0 => {
+                stepper.0.set_high().unwrap();
+                stepper.1.set_low().unwrap();
+                stepper.2.set_high().unwrap();
+                stepper.3.set_low().unwrap();
+            },
+            1 => {
+                stepper.0.set_low().unwrap();
+                stepper.1.set_high().unwrap();
+                stepper.2.set_high().unwrap();
+                stepper.3.set_low().unwrap();
+            },
+            2 => {
+                stepper.0.set_low().unwrap();
+                stepper.1.set_high().unwrap();
+                stepper.2.set_low().unwrap();
+                stepper.3.set_high().unwrap();
+            },
+            3 => {
+                stepper.0.set_high().unwrap();
+                stepper.1.set_low().unwrap();
+                stepper.2.set_low().unwrap();
+                stepper.3.set_high().unwrap();
+            },
+            _ => {
+                steps = 0;
+            }
+        }
+
+        steps = steps + 1;
+        delay.delay_ms(5);
+
+        if steps % steps_per_water == 0 {
+            led_pin.set_high().unwrap();
+            pump_pin.set_high().unwrap();
+            delay.delay_ms(500);
+            pump_pin.set_low().unwrap();
+            led_pin.set_low().unwrap();
+        }
+    }
+
+    /*loop {
         info!("on!");
         led_pin.set_high().unwrap();
+
+        // De-energize second coil
+        stepper_secondcoil.0.set_low().unwrap();
+        stepper_secondcoil.1.set_low().unwrap();
+
+        // energize first coil
+        stepper_firstcoil.0.set_high().unwrap();
+        stepper_firstcoil.1.set_high().unwrap();
+
         delay.delay_ms(500);
         info!("off!");
         led_pin.set_low().unwrap();
+        //pump_pin.set_low().unwrap();
+
+        // de-energize first coil
+        stepper_firstcoil.0.set_low().unwrap();
+        stepper_firstcoil.1.set_low().unwrap();
+
+        // energize second coil
+        stepper_secondcoil.0.set_high().unwrap();
+        stepper_secondcoil.1.set_high().unwrap();
+
         delay.delay_ms(500);
-    }
+    }*/
 }
 
 // End of file
